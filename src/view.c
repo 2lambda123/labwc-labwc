@@ -6,6 +6,7 @@
 #include "common/scene-helpers.h"
 #include "labwc.h"
 #include "menu/menu.h"
+#include "node.h"
 #include "regions.h"
 #include "ssd.h"
 #include "view.h"
@@ -1044,81 +1045,5 @@ view_reload_ssd(struct view *view)
 	if (view->ssd_enabled && !view->fullscreen) {
 		undecorate(view);
 		decorate(view);
-	}
-}
-
-void
-view_destroy(struct view *view)
-{
-	assert(view);
-	struct server *server = view->server;
-	bool need_cursor_update = false;
-
-	wl_list_remove(&view->map.link);
-	wl_list_remove(&view->unmap.link);
-	wl_list_remove(&view->request_move.link);
-	wl_list_remove(&view->request_resize.link);
-	wl_list_remove(&view->request_minimize.link);
-	wl_list_remove(&view->request_maximize.link);
-	wl_list_remove(&view->request_fullscreen.link);
-	wl_list_remove(&view->set_title.link);
-	wl_list_remove(&view->destroy.link);
-
-	if (view->toplevel.handle) {
-		wlr_foreign_toplevel_handle_v1_destroy(view->toplevel.handle);
-	}
-
-	if (server->grabbed_view == view) {
-		/* Application got killed while moving around */
-		server->input_mode = LAB_INPUT_STATE_PASSTHROUGH;
-		server->grabbed_view = NULL;
-		need_cursor_update = true;
-		regions_hide_overlay(&server->seat);
-	}
-
-	if (server->focused_view == view) {
-		server->focused_view = NULL;
-		need_cursor_update = true;
-	}
-
-	if (server->seat.pressed.view == view) {
-		seat_reset_pressed(&server->seat);
-	}
-
-	if (view->tiled_region_evacuate) {
-		zfree(view->tiled_region_evacuate);
-	}
-
-	osd_on_view_destroy(view);
-	undecorate(view);
-
-	if (view->scene_tree) {
-		wlr_scene_node_destroy(&view->scene_tree->node);
-		view->scene_tree = NULL;
-	}
-
-	/*
-	 * The layer-shell top-layer is disabled when an application is running
-	 * in fullscreen mode, so if that's the case, we have to re-enable it
-	 * here.
-	 */
-	if (view->fullscreen && view->output) {
-		uint32_t top = ZWLR_LAYER_SHELL_V1_LAYER_TOP;
-		wlr_scene_node_set_enabled(&view->output->layer_tree[top]->node,
-			true);
-	}
-
-	/* If we spawned a window menu, close it */
-	if (server->menu_current
-			&& server->menu_current->triggered_by_view == view) {
-		menu_close_root(server);
-	}
-
-	/* Remove view from server->views */
-	wl_list_remove(&view->link);
-	free(view);
-
-	if (need_cursor_update) {
-		cursor_update_focus(server);
 	}
 }
