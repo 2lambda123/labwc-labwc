@@ -524,6 +524,7 @@ entry(struct theme *theme, const char *key, const char *value)
 	}
 	if (match_glob(key, "titlebar.height")) {
 		theme->title_height = atoi(value);
+		wlr_log(WLR_ERROR, "updated title height to %d", theme->title_height);
 	}
 	if (match_glob(key, "menu.items.padding.x")) {
 		theme->menu_item_padding_x = atoi(value);
@@ -769,6 +770,11 @@ rounded_rect(struct rounded_corner_ctx *ctx)
 	/* TODO: scale */
 	buffer = buffer_create_cairo(w, h, 1, /*free_on_destroy*/ true);
 
+	if (!buffer) {
+		wlr_log(WLR_ERROR, "failed to create cairo buffer, fonts missing?");
+		exit(2);
+	}
+
 	cairo_t *cairo = buffer->cairo;
 	cairo_surface_t *surf = cairo_get_target(cairo);
 
@@ -919,6 +925,9 @@ out:
 static void
 create_corners(struct theme *theme)
 {
+	wlr_log(WLR_ERROR, "title height: %d, border width: %d",
+		theme->title_height, theme->border_width);
+
 	struct wlr_box box = {
 		.x = 0,
 		.y = 0,
@@ -954,7 +963,12 @@ static void
 post_processing(struct theme *theme)
 {
 	int h = MAX(font_height(&rc.font_activewindow), font_height(&rc.font_inactivewindow));
+	wlr_log(WLR_ERROR, "got font height active: %d", font_height(&rc.font_activewindow));
+	wlr_log(WLR_ERROR, "got font height inactive: %d", font_height(&rc.font_inactivewindow));
+	wlr_log(WLR_ERROR, "got max font height: %d", h);
 	if (theme->title_height < h) {
+		wlr_log(WLR_ERROR, "adjusting title height to %d + 2 * padding_height (%d)",
+			h, theme->padding_height);
 		theme->title_height = h + 2 * theme->padding_height;
 	}
 

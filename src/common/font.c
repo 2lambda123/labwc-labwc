@@ -14,9 +14,15 @@
 PangoFontDescription *
 font_to_pango_desc(struct font *font)
 {
-	PangoFontDescription *desc = pango_font_description_new();
-	pango_font_description_set_family(desc, font->name);
-	pango_font_description_set_size(desc, font->size * PANGO_SCALE);
+	char buf[4096];
+	wlr_log(WLR_ERROR, "pango scale: %d font->size %d", PANGO_SCALE, font->size);
+	//snprintf(buf, sizeof(buf), "%s %d", font->name, font->size * PANGO_SCALE);
+	snprintf(buf, sizeof(buf), "%s %d", font->name, font->size);
+	PangoFontDescription *desc = pango_font_description_from_string(buf);
+	wlr_log(WLR_ERROR, "got desc for '%s': %p", buf, desc);
+	//PangoFontDescription *desc = pango_font_description_new();
+	//pango_font_description_set_family(desc, font->name);
+	//pango_font_description_set_size(desc, font->size * PANGO_SCALE);
 	if (font->slant == FONT_SLANT_ITALIC) {
 		pango_font_description_set_style(desc, PANGO_STYLE_ITALIC);
 	}
@@ -30,6 +36,7 @@ static PangoRectangle
 font_extents(struct font *font, const char *string)
 {
 	PangoRectangle rect = { 0 };
+	wlr_log(WLR_ERROR, "\tinitial rect height: %d", rect.height);
 	if (!string) {
 		return rect;
 	}
@@ -38,9 +45,13 @@ font_extents(struct font *font, const char *string)
 	PangoLayout *layout;
 
 	surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
+	wlr_log(WLR_ERROR, "\tsurface: %p", surface);
 	c = cairo_create(surface);
+	wlr_log(WLR_ERROR, "\tcairo: %p", c);
 	layout = pango_cairo_create_layout(c);
+	wlr_log(WLR_ERROR, "\tlayout: %p", layout);
 	PangoFontDescription *desc = font_to_pango_desc(font);
+	wlr_log(WLR_ERROR, "\tfont desc: %p", desc);
 
 	pango_layout_set_font_description(layout, desc);
 	pango_layout_set_text(layout, string, -1);
@@ -49,6 +60,7 @@ font_extents(struct font *font, const char *string)
 	pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_MIDDLE);
 	pango_layout_get_extents(layout, NULL, &rect);
 	pango_extents_to_pixels(&rect, NULL);
+	wlr_log(WLR_ERROR, "\textents_to_pixels height: %d", rect.height);
 
 	/* we put a 2 px edge on each side - because Openbox does it :) */
 	/* TODO: remove the 4 pixel addition and always do the padding by the caller */
@@ -65,6 +77,8 @@ int
 font_height(struct font *font)
 {
 	PangoRectangle rectangle = font_extents(font, "abcdefg");
+	wlr_log(WLR_ERROR, "font %p height: %d, name: %s -> %d",
+		font, font->size, font->name, rectangle.height);
 	return rectangle.height;
 }
 
