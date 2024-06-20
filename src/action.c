@@ -101,6 +101,7 @@ enum action_type {
 	ACTION_TYPE_SEND_TO_DESKTOP,
 	ACTION_TYPE_GO_TO_DESKTOP,
 	ACTION_TYPE_SNAP_TO_REGION,
+	ACTION_TYPE_CYCLE_NEAR_REGION,
 	ACTION_TYPE_TOGGLE_KEYBINDS,
 	ACTION_TYPE_FOCUS_OUTPUT,
 	ACTION_TYPE_MOVE_TO_OUTPUT,
@@ -160,6 +161,7 @@ const char *action_names[] = {
 	"SendToDesktop",
 	"GoToDesktop",
 	"SnapToRegion",
+	"CycleNearRegion",
 	"ToggleKeybinds",
 	"FocusOutput",
 	"MoveToOutput",
@@ -408,6 +410,12 @@ action_arg_from_xml_node(struct action *action, const char *nodename, const char
 			goto cleanup;
 		}
 		break;
+	case ACTION_TYPE_CYCLE_NEAR_REGION:
+		if (!strcmp(argument, "region")) {
+			action_arg_add_str(action, argument, content);
+			goto cleanup;
+		}
+		break;
 	case ACTION_TYPE_FOCUS_OUTPUT:
 		if (!strcmp(argument, "output")) {
 			action_arg_add_str(action, argument, content);
@@ -546,6 +554,9 @@ action_is_valid(struct action *action)
 		arg_name = "to";
 		break;
 	case ACTION_TYPE_SNAP_TO_REGION:
+		arg_name = "region";
+		break;
+	case ACTION_TYPE_CYCLE_NEAR_REGION:
 		arg_name = "region";
 		break;
 	case ACTION_TYPE_FOCUS_OUTPUT:
@@ -1030,6 +1041,29 @@ actions_run(struct view *activator, struct server *server,
 					/*store_natural_geometry*/ true);
 			} else {
 				wlr_log(WLR_ERROR, "Invalid SnapToRegion id: '%s'", region_name);
+			}
+			break;
+		case ACTION_TYPE_CYCLE_NEAR_REGION:
+			{
+				if (!view) {
+					break;
+				}
+				struct output *output = view->output;
+				if (!output_is_usable(output)) {
+					break;
+				}
+				const char *region_name = action_get_str(action, "region", NULL);
+				struct region *region = regions_from_name(region_name, output);
+				if (region) {
+					struct view *new_view = desktop_cycle_view_near_region(
+						server, view, region);
+					if (new_view) {
+						desktop_focus_view(new_view, /*raise*/ true);
+					}
+				} else {
+					wlr_log(WLR_ERROR, "Invalid CycleNearRegion id: '%s'",
+						region_name);
+				}
 			}
 			break;
 		case ACTION_TYPE_TOGGLE_KEYBINDS:
