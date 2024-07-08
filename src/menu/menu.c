@@ -746,9 +746,13 @@ print_state(enum menu_align align)
 	}
 }
 
+/* TODO: consider not passing align here as it's in the menu struct anyway */
 static void
 menu_configure(struct menu *menu, int lx, int ly, enum menu_align align)
 {
+	/* XXX */
+	print_state(align);
+
 	struct theme *theme = menu->server->theme;
 	struct wlr_output *wlr_output = wlr_output_layout_output_at(
 		menu->server->output_layout, lx, ly);
@@ -764,6 +768,7 @@ menu_configure(struct menu *menu, int lx, int ly, enum menu_align align)
 	struct wlr_box full_area = { 0 };
 	wlr_output_effective_resolution(output->wlr_output,
 		&full_area.width, &full_area.height);
+	//wlr_log(WLR_ERROR, "XXX width=%d, height=%d", full_area.width, full_area.height);
 
 	/* Get output local coordinates */
 	double ox = lx;
@@ -812,16 +817,17 @@ menu_configure(struct menu *menu, int lx, int ly, enum menu_align align)
 		}
 	}
 
-	print_state(align);
-	invert_vertical_alignment(&align);
-	print_state(align);
+	wlr_log(WLR_ERROR, "XXX width=%d, height=%d", full_area.width, full_area.height);
+	wlr_log(WLR_ERROR, "XXX oy=%d; menu-height=%d; output-height=%d", oy, menu->size.height, full_area.height);
 
 	/* It it doesn't fit, try to invert the alignment */
 	if (align & LAB_MENU_OPEN_BOTTOM) {
+		wlr_log(WLR_ERROR, "XXXXXXXXXXX BOTTOM");
 		if (oy + menu->size.height > full_area.height) {
 			invert_vertical_alignment(&align);
 		}
 	} else if (align & LAB_MENU_OPEN_TOP) {
+		wlr_log(WLR_ERROR, "XXXXXXXXXXX TOP");
 		if (oy < menu->size.height) {
 			invert_vertical_alignment(&align);
 		}
