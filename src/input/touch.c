@@ -61,6 +61,7 @@ handle_touch_motion(struct wl_listener *listener, void *data)
 {
 	struct seat *seat = wl_container_of(listener, seat, touch_motion);
 	struct wlr_touch_motion_event *event = data;
+
 	idle_manager_notify_activity(seat->seat);
 
 	/* Find existing touch point to determine initial offsets to subtract */
@@ -103,6 +104,8 @@ handle_touch_down(struct wl_listener *listener, void *data)
 {
 	struct seat *seat = wl_container_of(listener, seat, touch_down);
 	struct wlr_touch_down_event *event = data;
+
+	idle_manager_notify_activity(seat->seat);
 
 	/* Compute layout => surface offset and save for this touch point */
 	struct touch_point *touch_point = znew(*touch_point);
@@ -155,6 +158,8 @@ handle_touch_up(struct wl_listener *listener, void *data)
 {
 	struct seat *seat = wl_container_of(listener, seat, touch_up);
 	struct wlr_touch_up_event *event = data;
+
+	idle_manager_notify_activity(seat->seat);
 
 	/* Remove the touch point from the seat */
 	struct touch_point *touch_point, *tmp;
