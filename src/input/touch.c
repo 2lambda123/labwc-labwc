@@ -119,6 +119,7 @@ handle_touch_down(struct wl_listener *listener, void *data)
 	wl_list_insert(&seat->touch_points, &touch_point->link);
 
 	if (touch_point->surface) {
+		seat_pointer_end_grab(seat, touch_point->surface);
 		/* Clear focus to not interfere with touch input */
 		wlr_seat_pointer_notify_clear_focus(seat->seat);
 
