@@ -180,8 +180,6 @@ notify_motion(struct drawing_tablet *tablet, struct drawing_tablet_tool *tool,
 		struct wlr_surface *surface, double x, double y, double dx, double dy,
 		uint32_t time)
 {
-	idle_manager_notify_activity(tool->seat->seat);
-
 	bool enter_surface = false;
 	/* Postpone proximity-in on a new surface when the tip is down */
 	if (surface != tool->tool_v2->focused_surface && !tool->tool_v2->is_down) {
@@ -252,6 +250,9 @@ handle_tablet_tool_proximity(struct wl_listener *listener, void *data)
 		return;
 	}
 
+	idle_manager_notify_activity(tablet->seat->seat);
+	cursor_set_visible(tablet->seat, /* visible */ true);
+
 	if (ev->state == WLR_TABLET_TOOL_PROXIMITY_IN) {
 		tablet->motion_mode =
 			tool_motion_mode(rc.tablet_tool.motion, ev->tool);
@@ -311,6 +312,9 @@ handle_tablet_tool_axis(struct wl_listener *listener, void *data)
 		wlr_log(WLR_DEBUG, "tool axis event before tablet create");
 		return;
 	}
+
+	idle_manager_notify_activity(tablet->seat->seat);
+	cursor_set_visible(tablet->seat, /* visible */ true);
 
 	/*
 	 * Reset relative coordinates. If those axes aren't updated,
@@ -457,29 +461,6 @@ to_stylus_button(uint32_t button)
 }
 
 static void
-seat_pointer_end_grab(struct drawing_tablet_tool *tool,
-		struct wlr_surface *surface)
-{
-	if (!surface || !wlr_seat_pointer_has_grab(tool->seat->seat)) {
-		return;
-	}
-
-	struct wlr_xdg_surface *xdg_surface =
-		wlr_xdg_surface_try_from_wlr_surface(surface);
-	if (!xdg_surface || xdg_surface->role != WLR_XDG_SURFACE_ROLE_POPUP) {
-		/*
-		 * If we have an active popup grab (an open popup) and we are
-		 * not on the popup itself, end that grab to close the popup.
-		 * Contrary to pointer button notifications, a tablet button
-		 * notification sometimes doesn't end grabs automatically on
-		 * button notifications in another client (observed in GTK4),
-		 * so end the grab manually.
-		 */
-		wlr_seat_pointer_end_grab(tool->seat->seat);
-	}
-}
-
-static void
 handle_tablet_tool_tip(struct wl_listener *listener, void *data)
 {
 	struct wlr_tablet_tool_tip_event *ev = data;
@@ -489,6 +470,9 @@ handle_tablet_tool_tip(struct wl_listener *listener, void *data)
 		wlr_log(WLR_DEBUG, "tool tip event before tablet create");
 		return;
 	}
+
+	idle_manager_notify_activity(tablet->seat->seat);
+	cursor_set_visible(tablet->seat, /* visible */ true);
 
 	double x, y, dx, dy;
 	struct wlr_surface *surface = tablet_get_coords(tablet, &x, &y, &dx, &dy);
@@ -506,8 +490,6 @@ handle_tablet_tool_tip(struct wl_listener *listener, void *data)
 	 */
 	if (tool && !is_down_mouse_emulation && (surface
 			|| wlr_tablet_tool_v2_has_implicit_grab(tool->tool_v2))) {
-		idle_manager_notify_activity(tool->seat->seat);
-
 		uint32_t stylus_button = to_stylus_button(button);
 		if (stylus_button != BTN_TOOL_PEN) {
 			wlr_log(WLR_INFO, "ignoring stylus tool pen mapping for tablet mode");
@@ -517,7 +499,7 @@ handle_tablet_tool_tip(struct wl_listener *listener, void *data)
 			bool notify = cursor_process_button_press(tool->seat, BTN_LEFT,
 				ev->time_msec);
 			if (notify) {
-				seat_pointer_end_grab(tool, surface);
+				seat_pointer_end_grab(tool->seat, surface);
 				wlr_tablet_v2_tablet_tool_notify_down(tool->tool_v2);
 				wlr_tablet_tool_v2_start_implicit_grab(tool->tool_v2);
 			}
@@ -569,6 +551,9 @@ handle_tablet_tool_button(struct wl_listener *listener, void *data)
 		return;
 	}
 
+	idle_manager_notify_activity(tablet->seat->seat);
+	cursor_set_visible(tablet->seat, /* visible */ true);
+
 	double x, y, dx, dy;
 	struct wlr_surface *surface = tablet_get_coords(tablet, &x, &y, &dx, &dy);
 
@@ -583,8 +568,6 @@ handle_tablet_tool_button(struct wl_listener *listener, void *data)
 	 * - the surface below the tip understands the tablet protocol.
 	 */
 	if (tool && !is_down_mouse_emulation && surface) {
-		idle_manager_notify_activity(tool->seat->seat);
-
 		if (button && ev->state == WLR_BUTTON_PRESSED) {
 			struct view *view = view_from_wlr_surface(surface);
 			struct mousebind *mousebind;
@@ -601,7 +584,7 @@ handle_tablet_tool_button(struct wl_listener *listener, void *data)
 		uint32_t stylus_button = to_stylus_button(button);
 		if (stylus_button && stylus_button != BTN_TOOL_PEN) {
 			if (ev->state == WLR_BUTTON_PRESSED) {
-				seat_pointer_end_grab(tool, surface);
+				seat_pointer_end_grab(tool->seat, surface);
 			}
 			wlr_tablet_v2_tablet_tool_notify_button(tool->tool_v2,
 				stylus_button,
